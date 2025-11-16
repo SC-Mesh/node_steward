@@ -116,6 +116,12 @@
 
 - name: Run mise installer script
   ansible.builtin.shell: /tmp/install_mise.sh
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+  args:
+    creates: "/home/{{ user }}/.local/bin/mise"
 
 - name: Add mise activations to runtime config
   ansible.builtin.lineinfile:
@@ -125,22 +131,36 @@
     insertafter: EOF
     state: present
 
-# TODO: derive targeted Python version from a set variable
-- name: Install Python Latest via mise
-  ansible.builtin.shell: 'mise install python@latest'
+- name: Install the configured Python version via mise
+  ansible.builtin.shell: 'mise install python@{{ python_version }}'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+  args:
+    creates: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}"
 
-- name: Set global Python version with mise
-  ansible.builtin.shell: 'mise use -g python@latest'
+- name: Set global Python version with mise (only if different)
+  ansible.builtin.shell: >
+    bash -lc 'if [ "$(readlink -f /home/{{ user }}/.local/share/mise/current 2>/dev/null)" != "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}" ]; then /home/{{ user }}/.local/bin/mise use -g python@{{ python_version }}; fi'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
 
-- name: Save Python version to variable
-  ansible.builtin.command: python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')"
-  register: python_version
+- name: Install pytap2 (Meshtastic dependency) using the configured python's pip
+  ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade pytap2'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
 
-- name: Install pytap2 (Meshtastic dependency)
-  ansible.builtin.shell: 'pip install --upgrade pytap2'
-
-- name: Install Meshtastic CLI
-  ansible.builtin.shell: 'pip install --upgrade meshtastic[cli]'
+- name: Install Meshtastic CLI using the configured python's pip
+  ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade meshtastic[cli]'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
 
 # Cron jobs
 - name: Schedule a weekly reboot of the pi
@@ -158,7 +178,7 @@
     user: "{{ user }}"
     minute: "30"
     hour: "4"
-    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version.stdout }}/bin/meshtastic --reboot"
+    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/meshtastic --reboot"
     state: present
 
 - name: Schedule a daily backup of the Meshtastic node's config
@@ -167,7 +187,7 @@
     user: "{{ user }}"
     minute: "15"
     hour: "2"
-    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version.stdout }}/bin/python /home/{{ user }}/node_steward/scripts/backup_node_config.py"
+    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/python /home/{{ user }}/node_steward/scripts/backup_node_config.py"
     state: present
 
 - name: Schedule a daily attempt to update the Meshtastic CLI
@@ -176,7 +196,7 @@
     user: "{{ user }}"
     minute: "0"
     hour: "0"
-    job: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version.stdout }}/bin/pip install --upgrade --no-cache-dir "meshtastic[cli]"'
+    job: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade --no-cache-dir "meshtastic[cli]"'
     state: present
 
 - name: Schedule a job to git pull the latest from node_steward's main branch every 15 minutes
