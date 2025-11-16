@@ -14,4 +14,4 @@
   ansible.builtin.shell: 'curl -fsSL https://tailscale.com/install.sh | sh'
   become: true
   # Note: manually running `sudo tailscale up` is required after installation
-  # In order for the Tailscale server to be enabled and run.
+  # in order for the Tailscale service to be enabled and run.
