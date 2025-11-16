@@ -167,7 +167,7 @@
     user: "{{ user }}"
     minute: "15"
     hour: "2"
-    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version.stdout }}/bin/python /home/{{ user }}/scripts/backup_node_config.py"
+    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version.stdout }}/bin/python /home/{{ user }}/node_steward/scripts/backup_node_config.py"
     state: present
 
 - name: Schedule a daily attempt to update the Meshtastic CLI
@@ -177,4 +177,13 @@
     minute: "0"
     hour: "0"
     job: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version.stdout }}/bin/pip install --upgrade --no-cache-dir "meshtastic[cli]"'
+    state: present
+
+- name: Schedule a job to git pull the latest from node_steward's main branch every 15 minutes
+  ansible.builtin.cron:
+    name: "daily_node_config_backup"
+    user: "{{ user }}"
+    minute: "*/15"
+    hour: "*"
+    job: "/home/{{ user }}/node_steward/scripts/auto_sync.sh"
     state: present
