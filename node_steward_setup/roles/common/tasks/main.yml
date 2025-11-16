@@ -131,6 +131,10 @@
 - name: Set global Python version with mise
   ansible.builtin.shell: 'mise use -g python@latest'
 
+- name: Save Python bin path to variable
+  ansible.builtin.command: which python
+  register: python_bin_path
+
 - name: Install pytap2 (Meshtastic dependency)
   ansible.builtin.shell: 'pip install --upgrade pytap2'
 
