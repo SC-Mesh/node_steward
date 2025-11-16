@@ -1,0 +1,17 @@
+---
+# Services and system-level packages
+- name: Install unattended-upgrades
+  ansible.builtin.package:
+    name: unattended-upgrades
+    state: present
+  become: true
+
+- name: Enable unattended-upgrades
+  ansible.builtin.shell: 'dpkg-reconfigure --priority=low unattended-upgrades'
+  become: true
+
+- name: Install Tailscale
+  ansible.builtin.shell: 'curl -fsSL https://tailscale.com/install.sh | sh'
+  become: true
+  # Note: manually running `sudo tailscale up` is required after installation
+  # In order for the Tailscale server to be enabled and run.

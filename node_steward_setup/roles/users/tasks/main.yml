@@ -1,0 +1,9 @@
+---
+- name: Ensure the deploy user exists
+  ansible.builtin.user:
+    name: "{{ user }}"
+    state: present
+    groups: sudo
+    shell: /bin/zsh
+    create_home: true
+  become: true
