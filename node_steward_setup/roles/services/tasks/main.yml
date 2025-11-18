@@ -9,9 +9,25 @@
 - name: Enable unattended-upgrades
   ansible.builtin.shell: 'dpkg-reconfigure --priority=low unattended-upgrades'
   become: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Download Tailscale installer
+  ansible.builtin.get_url:
+    url: "https://tailscale.com/install.sh "
+    dest: "/home/{{ user }}/tailscale_install.sh"
+    mode: '0755'
+    force: yes
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+    creates: "/home/{{ user }}/tailscale_install.sh"
 
 - name: Install Tailscale
-  ansible.builtin.shell: 'curl -fsSL https://tailscale.com/install.sh | sh'
-  become: true
-  # Note: manually running `sudo tailscale up` is required after installation
-  # in order for the Tailscale service to be enabled and run.
+  ansible.builtin.shell: '/home/{{ user }}/tailscale_install.sh'
+  args:
+    executable: /bin/bash
+    creates: "/home/{{ user }}/.tmux"
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
