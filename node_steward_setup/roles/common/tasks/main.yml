@@ -6,6 +6,19 @@
     state: present
   become: true
 
+- name: Install git
+  ansible.builtin.package:
+    name: git
+    state: present
+  become: true
+
+
+- name: Create blank .zshrc
+  ansible.builtin.file:
+    path: /home/{{ user }}/.zshrc
+    state: touch
+    mode: '0644'
+
 - name: Download ohmyzsh
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
@@ -13,8 +26,14 @@
     mode: '0755'
 
 - name: Install ohmyzsh
-  ansible.builtin.script:
-    cmd: "/home/{{ user }}/install.sh"
+  ansible.builtin.shell: 'bash -c "/home/{{ user }}/install.sh"'
+  args:
+    executable: /bin/bash
+    creates: "/home/{{ user }}/.oh-my-zsh"
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
 
 - name: Install PowerLevel10K
   ansible.builtin.git:
@@ -52,12 +71,6 @@
     line: "source /home/{{ user }}/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme"
 
 # Base utilities
-- name: Install git
-  ansible.builtin.package:
-    name: git
-    state: present
-  become: true
-
 - name: Install vim
   ansible.builtin.package:
     name: vim
