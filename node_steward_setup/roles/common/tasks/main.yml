@@ -26,7 +26,7 @@
     mode: '0755'
 
 - name: Install ohmyzsh
-  ansible.builtin.shell: 'bash -c "/home/{{ user }}/install.sh"'
+  ansible.builtin.shell: 'bash -c "/home/{{ user }}/install.sh --unattended"'
   args:
     executable: /bin/bash
     creates: "/home/{{ user }}/.oh-my-zsh"
