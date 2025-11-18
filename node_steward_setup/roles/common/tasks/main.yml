@@ -179,11 +179,12 @@
 
 - name: Source runtime config to load mise
   ansible.builtin.shell:
-    cmd: "source ~/.zshrc"
+    cmd: "source /home/{{user}}/.zshrc"
     executable: /bin/zsh
+  become_user: "{{ user }}"
 
 - name: Install the configured Python version via mise
-  ansible.builtin.shell: 'mise install python@{{ python_version }}'
+  ansible.builtin.shell: '/home/{{ user }}/.local/bin/mise install python@{{ python_version }}'
   become: true
   become_user: "{{ user }}"
   environment:
@@ -212,6 +213,14 @@
   become_user: "{{ user }}"
   environment:
     HOME: "/home/{{ user }}"
+
+# Pull node_steward repo
+- name: Clone or pull application repository
+  ansible.builtin.git:
+    repo: '{{ node_steward_repo_url }}'
+    dest: '/home/{{ user }}/node_steward'
+    version: 'main'
+    update: yes
 
 # Cron jobs
 - name: Schedule a weekly reboot of the pi
