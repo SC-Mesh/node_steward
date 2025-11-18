@@ -177,6 +177,11 @@
     insertafter: EOF
     state: present
 
+- name: Source runtime config to load mise
+  ansible.builtin.shell:
+    cmd: "source ~/.zshrc"
+    executable: /bin/zsh
+
 - name: Install the configured Python version via mise
   ansible.builtin.shell: 'mise install python@{{ python_version }}'
   become: true
