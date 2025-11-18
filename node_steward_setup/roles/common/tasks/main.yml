@@ -63,6 +63,7 @@
     src: "/home/{{ user }}/Meslo"
     dest: /usr/share/fonts/Meslo
     owner: root
+    remote_src: yes
   become: true
 
 - name: Add PowerLevel10K source to .zshrc
