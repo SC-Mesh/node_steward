@@ -56,6 +56,7 @@
   ansible.builtin.unarchive:
     src: "/home/{{ user }}/Meslo.zip"
     dest: "/home/{{ user }}/Meslo"
+    remote_src: yes
 
 - name: Move font files to fonts directory
   ansible.builtin.copy:
