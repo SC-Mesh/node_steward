@@ -58,10 +58,19 @@
     dest: "/home/{{ user }}/Meslo"
     remote_src: yes
 
+- name: Ensure /usr/local/share/fonts exists
+  ansible.builtin.file:
+    path: /usr/local/share/fonts
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
 - name: Move font files to fonts directory
   ansible.builtin.copy:
     src: "/home/{{ user }}/Meslo"
-    dest: /usr/share/fonts/Meslo
+    dest: /usr/local/share/fonts/Meslo
     owner: root
     remote_src: yes
   become: true
@@ -71,6 +80,18 @@
     path: "/home/{{ user }}/.zshrc"
     insertafter: EOF
     line: "source /home/{{ user }}/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme"
+
+- name: Disable Powerlevel9k configuration wizard
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    line: 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true'
+    create: true
+    insertafter: EOF
+    state: present
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
 
 # Base utilities
 - name: Install vim
@@ -112,12 +133,22 @@
     state: present
   become: true
 
+- name: Download .tmux installer script
+  ansible.builtin.get_url:
+    url: "https://github.com/gpakosz/.tmux/raw/refs/heads/master/install.sh"
+    dest: "/home/{{ user }}/ohmytmux_install.sh"
+    mode: '0755'
+    force: yes
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+    creates: "/home/{{ user }}/ohmytmux_install.sh"
+
 - name: Install Oh my tmux
-  ansible.builtin.shell: 'curl -fsSL "https://github.com/gpakosz/.tmux/raw/refs/heads/master/install.sh#$(date +%s)" | bash'
+  ansible.builtin.shell: '/home/{{ user }}/ohmytmux_install.sh'
   args:
     executable: /bin/bash
     creates: "/home/{{ user }}/.tmux"
-  become: true
   become_user: "{{ user }}"
   environment:
     HOME: "/home/{{ user }}"
