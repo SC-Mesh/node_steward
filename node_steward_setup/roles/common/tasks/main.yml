@@ -227,6 +227,8 @@
   environment:
     HOME: "/home/{{ user }}"
 
+# Allows for remotely building and flashing non-released firmware to node.
+# pio remote run --environment <device-name> -t upload --upload-port <raspi-ip>
 - name: Create Platform IO remote agent systemd service
   ansible.builtin.template:
     src: pio_remote_agent_service.service.j2
