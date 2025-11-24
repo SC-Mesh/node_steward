@@ -213,12 +213,32 @@
   environment:
     HOME: "/home/{{ user }}"
 
-- name: Install Meshtastic CLI using the configured python's pip
+- name: Install Meshtastic CLI
   ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade meshtastic[cli]'
   become: true
   become_user: "{{ user }}"
   environment:
     HOME: "/home/{{ user }}"
+
+- name: Install Platform IO
+  ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade platformio'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+- name: Create Platform IO remote agent systemd service
+  ansible.builtin.template:
+    src: pio_remote_agent_service.service.j2
+    dest: "/etc/systemd/system/pio_remote_agent.service"
+    mode: '0644'
+  notify: Reload systemd daemon
+
+- name: Start and enable the service
+  ansible.builtin.systemd_service:
+    name: "pio_remote_agent"
+    state: started
+    enabled: yes
 
 # Pull node_steward repo
 - name: Clone or pull application repository
@@ -273,3 +293,8 @@
     hour: "*"
     job: "/home/{{ user }}/node_steward/scripts/auto_sync.sh"
     state: present
+
+  handlers:
+    - name: Reload systemd daemon
+      ansible.builtin.systemd_service:
+        daemon_reload: yes
