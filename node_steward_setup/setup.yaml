@@ -1,0 +1,11 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    placeholder: 123
+
+  roles:
+    - users
+    - common
+    - services

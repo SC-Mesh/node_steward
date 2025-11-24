@@ -1,0 +1,302 @@
+---
+# zsh and user environment
+- name: Install zsh
+  ansible.builtin.package:
+    name: zsh
+    state: present
+  become: true
+
+- name: Install git
+  ansible.builtin.package:
+    name: git
+    state: present
+  become: true
+
+
+- name: Create blank .zshrc
+  ansible.builtin.file:
+    path: /home/{{ user }}/.zshrc
+    state: touch
+    mode: '0644'
+
+- name: Download ohmyzsh
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+    dest: "/home/{{ user }}/install.sh"
+    mode: '0755'
+
+- name: Install ohmyzsh
+  ansible.builtin.shell: 'bash -c "/home/{{ user }}/install.sh --unattended"'
+  args:
+    executable: /bin/bash
+    creates: "/home/{{ user }}/.oh-my-zsh"
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+- name: Install PowerLevel10K
+  ansible.builtin.git:
+    repo: https://github.com/romkatv/powerlevel10k.git
+    dest: "/home/{{ user }}/.oh-my-zsh/custom/themes/powerlevel10k"
+    depth: 1
+
+- name: Download NerdFonts
+  ansible.builtin.get_url:
+    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/Meslo.zip
+    dest: "/home/{{ user }}/Meslo.zip"
+
+- name: Create temp directory for fonts
+  ansible.builtin.file:
+    path: "/home/{{ user }}/Meslo"
+    state: directory
+    mode: '0755'
+
+- name: Unarchive font files
+  ansible.builtin.unarchive:
+    src: "/home/{{ user }}/Meslo.zip"
+    dest: "/home/{{ user }}/Meslo"
+    remote_src: yes
+
+- name: Ensure /usr/local/share/fonts exists
+  ansible.builtin.file:
+    path: /usr/local/share/fonts
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Move font files to fonts directory
+  ansible.builtin.copy:
+    src: "/home/{{ user }}/Meslo"
+    dest: /usr/local/share/fonts/Meslo
+    owner: root
+    remote_src: yes
+  become: true
+
+- name: Add PowerLevel10K source to .zshrc
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    insertafter: EOF
+    line: "source /home/{{ user }}/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme"
+
+- name: Disable Powerlevel9k configuration wizard
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    line: 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true'
+    create: true
+    insertafter: EOF
+    state: present
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+# Base utilities
+- name: Install vim
+  ansible.builtin.package:
+    name: vim
+    state: present
+  become: true
+
+- name: Set EDITOR environmental variable to vim
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    line: 'export EDITOR=vim'
+    create: true
+    insertafter: EOF
+    state: present
+
+- name: Install fzf
+  ansible.builtin.package:
+    name: fzf
+    state: present
+  become: true
+
+- name: Install bat
+  ansible.builtin.package:
+    name: bat
+    state: present
+  become: true
+
+- name: Install btop
+  ansible.builtin.package:
+    name: btop
+    state: present
+  become: true
+
+- name: Install mosh
+  ansible.builtin.package:
+    name: mosh
+    state: present
+  become: true
+
+# tmux
+- name: Install tmux
+  ansible.builtin.package:
+    name: tmux
+    state: present
+  become: true
+
+- name: Download .tmux installer script
+  ansible.builtin.get_url:
+    url: "https://github.com/gpakosz/.tmux/raw/refs/heads/master/install.sh"
+    dest: "/home/{{ user }}/ohmytmux_install.sh"
+    mode: '0755'
+    force: yes
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+    creates: "/home/{{ user }}/ohmytmux_install.sh"
+
+- name: Install Oh my tmux
+  ansible.builtin.shell: '/home/{{ user }}/ohmytmux_install.sh'
+  args:
+    executable: /bin/bash
+    creates: "/home/{{ user }}/.tmux"
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+# mise and Python + pip packages
+- name: Download mise installer script
+  ansible.builtin.get_url:
+    url: https://mise.run
+    dest: /tmp/install_mise.sh
+    mode: '0755'
+
+- name: Run mise installer script
+  ansible.builtin.shell: /tmp/install_mise.sh
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+  args:
+    creates: "/home/{{ user }}/.local/bin/mise"
+
+- name: Add mise activations to runtime config
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    line: 'eval "$(/home/{{ user }}/.local/bin/mise activate zsh)"'
+    create: true
+    insertafter: EOF
+    state: present
+
+- name: Source runtime config to load mise
+  ansible.builtin.shell:
+    cmd: "source /home/{{user}}/.zshrc"
+    executable: /bin/zsh
+  become_user: "{{ user }}"
+
+- name: Install the configured Python version via mise
+  ansible.builtin.shell: '/home/{{ user }}/.local/bin/mise install python@{{ python_version }}'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+  args:
+    creates: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}"
+
+- name: Set global Python version with mise (only if different)
+  ansible.builtin.shell: >
+    bash -lc 'if [ "$(readlink -f /home/{{ user }}/.local/share/mise/current 2>/dev/null)" != "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}" ]; then /home/{{ user }}/.local/bin/mise use -g python@{{ python_version }}; fi'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+- name: Install pytap2 (Meshtastic dependency) using the configured python's pip
+  ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade pytap2'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+- name: Install Meshtastic CLI
+  ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade meshtastic[cli]'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+- name: Install Platform IO
+  ansible.builtin.shell: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade platformio'
+  become: true
+  become_user: "{{ user }}"
+  environment:
+    HOME: "/home/{{ user }}"
+
+# Allows for remotely building and flashing non-released firmware to node.
+# pio remote run --environment <device-name> -t upload --upload-port <raspi-ip>
+- name: Create Platform IO remote agent systemd service
+  ansible.builtin.template:
+    src: pio_remote_agent_service.service.j2
+    dest: "/etc/systemd/system/pio_remote_agent.service"
+    mode: '0644'
+  notify: Reload systemd daemon
+
+- name: Start and enable the service
+  ansible.builtin.systemd_service:
+    name: "pio_remote_agent"
+    state: started
+    enabled: yes
+
+# Pull node_steward repo
+- name: Clone or pull application repository
+  ansible.builtin.git:
+    repo: '{{ node_steward_repo_url }}'
+    dest: '/home/{{ user }}/node_steward'
+    version: 'main'
+    update: yes
+
+# Cron jobs
+- name: Schedule a weekly reboot of the pi
+  ansible.builtin.cron:
+    name: "weekly_pi_reboot"
+    user: "root"
+    minute: "0"
+    hour: "4"
+    job: "/sbin/shutdown -r now"
+    state: present
+
+- name: Schedule a weekly reboot of the Meshtastic node
+  ansible.builtin.cron:
+    name: "weekly_node_reboot"
+    user: "{{ user }}"
+    minute: "30"
+    hour: "4"
+    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/meshtastic --reboot"
+    state: present
+
+- name: Schedule a daily backup of the Meshtastic node's config
+  ansible.builtin.cron:
+    name: "daily_node_config_backup"
+    user: "{{ user }}"
+    minute: "15"
+    hour: "2"
+    job: "/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/python /home/{{ user }}/node_steward/scripts/backup_node_config.py"
+    state: present
+
+- name: Schedule a daily attempt to update the Meshtastic CLI
+  ansible.builtin.cron:
+    name: "daily_meshtastic_cli_update"
+    user: "{{ user }}"
+    minute: "0"
+    hour: "0"
+    job: '/home/{{ user }}/.local/share/mise/installs/python/{{ python_version }}/bin/pip install --upgrade --no-cache-dir "meshtastic[cli]"'
+    state: present
+
+- name: Schedule a job to git pull the latest from node_steward's main branch every 15 minutes
+  ansible.builtin.cron:
+    name: "daily_node_config_backup"
+    user: "{{ user }}"
+    minute: "*/15"
+    hour: "*"
+    job: "/home/{{ user }}/node_steward/scripts/auto_sync.sh"
+    state: present
+
+  handlers:
+    - name: Reload systemd daemon
+      ansible.builtin.systemd_service:
+        daemon_reload: yes
